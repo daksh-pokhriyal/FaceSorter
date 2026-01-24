@@ -19,7 +19,7 @@ BASE_URL=os.getenv("BASE_URL","http://127.0.0.1:8000").rstrip("/")
 # ✅ put your exact vercel url here (important)
 FRONTEND_URL=os.getenv(
   "FRONTEND_URL",
-  "https://face-sorter-75eyf3xco-daksh-pokhriyals-projects.vercel.app/"
+  "https://face-sorter.vercel.app/"
 ).rstrip("/")
 
 

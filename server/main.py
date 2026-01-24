@@ -10,25 +10,30 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from fastapi import FastAPI,UploadFile,File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse,JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 
 # ✅ BASE URL for deployed backend (Render)
-# Put this in Render env variable:
+# Set on Render ENV:
 # BASE_URL=https://facesorter.onrender.com
-BASE_URL=os.getenv("BASE_URL","http://127.0.0.1:8000")
+BASE_URL=os.getenv("BASE_URL","http://127.0.0.1:8000").rstrip("/")
 
 
 app=FastAPI()
 
-# ✅ CORS Fix (Vercel + Localhost)
+
+# ✅ Allowed Origins (LOCAL + VERCEL)
+# Add your Vercel deployed URL here (recommended)
+ALLOWED_ORIGINS=[
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://face-sorter-2teuzj036-daksh-pokhriyals-projects.vercel.app"
+]
+
 app.add_middleware(
   CORSMiddleware,
-  allow_origins=[
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-  ],
+  allow_origins=ALLOWED_ORIGINS,
   allow_origin_regex=r"https://.*\.vercel\.app",
   allow_credentials=True,
   allow_methods=["*"],
@@ -40,7 +45,7 @@ BASE_DIR=os.path.dirname(os.path.abspath(__file__))
 RUNS_DIR=os.path.join(BASE_DIR,"runs")
 os.makedirs(RUNS_DIR,exist_ok=True)
 
-# ✅ serve preview images from runs folder
+# ✅ Serve preview images
 app.mount("/runs",StaticFiles(directory=RUNS_DIR),name="runs")
 
 
@@ -61,7 +66,16 @@ def get_embedding(img_path,detector_backend,embed_model):
 
 @app.get("/")
 def home():
-  return {"status":"✅ Face Sorter backend running"}
+  return {
+    "status":"✅ Face Sorter backend running",
+    "base_url":BASE_URL
+  }
+
+
+# ✅ extra: Render/Vercel sometimes sends preflight OPTIONS
+@app.options("/sort")
+def preflight_sort():
+  return JSONResponse(content={"ok":True})
 
 
 @app.post("/sort")
@@ -97,8 +111,17 @@ async def sort_images(
       f.write(await img.read())
 
   # ✅ load svm model + encoder
-  svm_model=joblib.load(os.path.join(BASE_DIR,"models","svm_model.pkl"))
-  label_encoder=joblib.load(os.path.join(BASE_DIR,"models","label_encoder.pkl"))
+  svm_model_path=os.path.join(BASE_DIR,"models","svm_model.pkl")
+  encoder_path=os.path.join(BASE_DIR,"models","label_encoder.pkl")
+
+  if (not os.path.exists(svm_model_path)) or (not os.path.exists(encoder_path)):
+    return JSONResponse(
+      status_code=500,
+      content={"error":"Model files missing in server/models/ folder"}
+    )
+
+  svm_model=joblib.load(svm_model_path)
+  label_encoder=joblib.load(encoder_path)
 
   detector_backend=detector
   embed_model="Facenet512"
@@ -109,7 +132,7 @@ async def sort_images(
   # ✅ target embedding
   target_emb=get_embedding(target_path,detector_backend,embed_model)
 
-  # ✅ target label by SVM (decision function)
+  # ✅ target label by SVM
   target_scores=svm_model.decision_function([target_emb])[0]
   target_best_idx=int(np.argmax(target_scores))
   target_best_score=float(target_scores[target_best_idx])
@@ -164,17 +187,15 @@ async def sort_images(
           face_score=float(face_scores[face_best_idx])
           face_label=label_encoder.inverse_transform([face_best_idx])[0]
 
-          # ✅ SVM match
           if (face_label==target_label) and (face_score>=svm_score_threshold):
             found=True
             break
 
-          # ✅ fallback similarity match
           if dist<=similarity_threshold:
             found=True
             break
+
         else:
-          # ✅ similarity only
           if dist<=similarity_threshold:
             found=True
             break
@@ -197,14 +218,14 @@ async def sort_images(
       full_path=os.path.join(matched_dir,file_name)
       z.write(full_path,arcname=file_name)
 
-  # ✅ zip NOT matched images
+  # ✅ zip not matched images
   not_matched_zip_path=os.path.join(run_dir,"not_matched.zip")
   with zipfile.ZipFile(not_matched_zip_path,"w") as z:
     for file_name in os.listdir(not_matched_dir):
       full_path=os.path.join(not_matched_dir,file_name)
       z.write(full_path,arcname=file_name)
 
-  # ✅ preview urls (send only first 24)
+  # ✅ preview urls (first 24)
   matched_files=sorted(os.listdir(matched_dir))[:24]
   not_matched_files=sorted(os.listdir(not_matched_dir))[:24]
 
@@ -239,6 +260,10 @@ async def sort_images(
 def download_matched_zip(run_id:str):
   run_dir=os.path.join(RUNS_DIR,run_id)
   zip_path=os.path.join(run_dir,"matched.zip")
+
+  if not os.path.exists(zip_path):
+    return JSONResponse(status_code=404,content={"error":"matched.zip not found"})
+
   return FileResponse(zip_path,filename="matched.zip")
 
 
@@ -246,4 +271,8 @@ def download_matched_zip(run_id:str):
 def download_not_matched_zip(run_id:str):
   run_dir=os.path.join(RUNS_DIR,run_id)
   zip_path=os.path.join(run_dir,"not_matched.zip")
+
+  if not os.path.exists(zip_path):
+    return JSONResponse(status_code=404,content={"error":"not_matched.zip not found"})
+
   return FileResponse(zip_path,filename="not_matched.zip")

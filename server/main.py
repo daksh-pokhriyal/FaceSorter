@@ -14,15 +14,27 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 
+# ✅ BASE URL for deployed backend (Render)
+# Put this in Render env variable:
+# BASE_URL=https://facesorter.onrender.com
+BASE_URL=os.getenv("BASE_URL","http://127.0.0.1:8000")
+
+
 app=FastAPI()
 
+# ✅ CORS Fix (Vercel + Localhost)
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"]
+  CORSMiddleware,
+  allow_origins=[
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+  ],
+  allow_origin_regex=r"https://.*\.vercel\.app",
+  allow_credentials=True,
+  allow_methods=["*"],
+  allow_headers=["*"]
 )
+
 
 BASE_DIR=os.path.dirname(os.path.abspath(__file__))
 RUNS_DIR=os.path.join(BASE_DIR,"runs")
@@ -33,206 +45,205 @@ app.mount("/runs",StaticFiles(directory=RUNS_DIR),name="runs")
 
 
 def cosine_distance(a,b):
-    sim=cosine_similarity([a],[b])[0][0]
-    return 1.0-float(sim)
+  sim=cosine_similarity([a],[b])[0][0]
+  return 1.0-float(sim)
 
 
 def get_embedding(img_path,detector_backend,embed_model):
-    rep=DeepFace.represent(
-        img_path=img_path,
-        model_name=embed_model,
-        detector_backend=detector_backend,
-        enforce_detection=True
-    )
-    return np.array(rep[0]["embedding"],dtype=np.float32)
+  rep=DeepFace.represent(
+    img_path=img_path,
+    model_name=embed_model,
+    detector_backend=detector_backend,
+    enforce_detection=True
+  )
+  return np.array(rep[0]["embedding"],dtype=np.float32)
 
 
 @app.get("/")
 def home():
-    return {"status":"✅ Face Sorter backend running"}
+  return {"status":"✅ Face Sorter backend running"}
 
 
 @app.post("/sort")
 async def sort_images(
-    target:UploadFile=File(...),
-    images:list[UploadFile]=File(...),
-    mode:str=File("hybrid"),
-    detector:str=File("mtcnn"),
-    similarity_threshold:float=File(0.42)
+  target:UploadFile=File(...),
+  images:list[UploadFile]=File(...),
+  mode:str=File("hybrid"),
+  detector:str=File("mtcnn"),
+  similarity_threshold:float=File(0.42)
 ):
-    run_id=str(uuid4())
-    run_dir=os.path.join(RUNS_DIR,run_id)
+  run_id=str(uuid4())
+  run_dir=os.path.join(RUNS_DIR,run_id)
 
-    target_dir=os.path.join(run_dir,"target_face")
-    input_dir=os.path.join(run_dir,"input_images")
-    matched_dir=os.path.join(run_dir,"matched")
-    not_matched_dir=os.path.join(run_dir,"not_matched")
+  target_dir=os.path.join(run_dir,"target_face")
+  input_dir=os.path.join(run_dir,"input_images")
+  matched_dir=os.path.join(run_dir,"matched")
+  not_matched_dir=os.path.join(run_dir,"not_matched")
 
-    os.makedirs(target_dir,exist_ok=True)
-    os.makedirs(input_dir,exist_ok=True)
-    os.makedirs(matched_dir,exist_ok=True)
-    os.makedirs(not_matched_dir,exist_ok=True)
+  os.makedirs(target_dir,exist_ok=True)
+  os.makedirs(input_dir,exist_ok=True)
+  os.makedirs(matched_dir,exist_ok=True)
+  os.makedirs(not_matched_dir,exist_ok=True)
 
-    # ✅ save target
-    target_path=os.path.join(target_dir,"target.jpg")
-    with open(target_path,"wb") as f:
-        f.write(await target.read())
+  # ✅ save target
+  target_path=os.path.join(target_dir,"target.jpg")
+  with open(target_path,"wb") as f:
+    f.write(await target.read())
 
-    # ✅ save input images
-    for img in images:
-        save_path=os.path.join(input_dir,img.filename)
-        with open(save_path,"wb") as f:
-            f.write(await img.read())
+  # ✅ save input images
+  for img in images:
+    save_path=os.path.join(input_dir,img.filename)
+    with open(save_path,"wb") as f:
+      f.write(await img.read())
 
-    # ✅ load svm model + encoder
-    svm_model=joblib.load(os.path.join(BASE_DIR,"models","svm_model.pkl"))
-    label_encoder=joblib.load(os.path.join(BASE_DIR,"models","label_encoder.pkl"))
+  # ✅ load svm model + encoder
+  svm_model=joblib.load(os.path.join(BASE_DIR,"models","svm_model.pkl"))
+  label_encoder=joblib.load(os.path.join(BASE_DIR,"models","label_encoder.pkl"))
 
-    # ✅ settings
-    detector_backend=detector
-    embed_model="Facenet512"
+  detector_backend=detector
+  embed_model="Facenet512"
 
-    svm_score_threshold=0.0
-    similarity_threshold=float(similarity_threshold)
+  svm_score_threshold=0.0
+  similarity_threshold=float(similarity_threshold)
 
-    # ✅ target embedding
-    target_emb=get_embedding(target_path,detector_backend,embed_model)
+  # ✅ target embedding
+  target_emb=get_embedding(target_path,detector_backend,embed_model)
 
-    # ✅ target label by SVM (decision function)
-    target_scores=svm_model.decision_function([target_emb])[0]
-    target_best_idx=int(np.argmax(target_scores))
-    target_best_score=float(target_scores[target_best_idx])
-    target_label=label_encoder.inverse_transform([target_best_idx])[0]
+  # ✅ target label by SVM (decision function)
+  target_scores=svm_model.decision_function([target_emb])[0]
+  target_best_idx=int(np.argmax(target_scores))
+  target_best_score=float(target_scores[target_best_idx])
+  target_label=label_encoder.inverse_transform([target_best_idx])[0]
 
-    use_svm=(target_best_score>=svm_score_threshold)
+  use_svm=(target_best_score>=svm_score_threshold)
 
-    if mode=="similarity":
-        use_svm=False
+  if mode=="similarity":
+    use_svm=False
 
-    matched_count=0
-    not_matched_count=0
-    total_scanned=0
+  matched_count=0
+  not_matched_count=0
+  total_scanned=0
 
-    valid_exts=(".jpg",".jpeg",".png",".webp")
+  valid_exts=(".jpg",".jpeg",".png",".webp")
 
-    for img_name in os.listdir(input_dir):
-        if not img_name.lower().endswith(valid_exts):
-            continue
+  for img_name in os.listdir(input_dir):
+    if not img_name.lower().endswith(valid_exts):
+      continue
 
-        total_scanned+=1
-        img_path=os.path.join(input_dir,img_name)
+    total_scanned+=1
+    img_path=os.path.join(input_dir,img_name)
 
-        try:
-            faces=DeepFace.extract_faces(
-                img_path=img_path,
-                detector_backend=detector_backend,
-                enforce_detection=False
-            )
+    try:
+      faces=DeepFace.extract_faces(
+        img_path=img_path,
+        detector_backend=detector_backend,
+        enforce_detection=False
+      )
 
-            found=False
+      found=False
 
-            for face_obj in faces:
-                face_img=face_obj["face"]
+      for face_obj in faces:
+        face_img=face_obj["face"]
 
-                rep=DeepFace.represent(
-                    img_path=face_img,
-                    model_name=embed_model,
-                    detector_backend="skip",
-                    enforce_detection=False
-                )
+        rep=DeepFace.represent(
+          img_path=face_img,
+          model_name=embed_model,
+          detector_backend="skip",
+          enforce_detection=False
+        )
 
-                if not rep or len(rep)==0:
-                    continue
+        if not rep or len(rep)==0:
+          continue
 
-                emb=np.array(rep[0]["embedding"],dtype=np.float32)
-                dist=cosine_distance(target_emb,emb)
+        emb=np.array(rep[0]["embedding"],dtype=np.float32)
+        dist=cosine_distance(target_emb,emb)
 
-                if use_svm:
-                    face_scores=svm_model.decision_function([emb])[0]
-                    face_best_idx=int(np.argmax(face_scores))
-                    face_score=float(face_scores[face_best_idx])
-                    face_label=label_encoder.inverse_transform([face_best_idx])[0]
+        if use_svm:
+          face_scores=svm_model.decision_function([emb])[0]
+          face_best_idx=int(np.argmax(face_scores))
+          face_score=float(face_scores[face_best_idx])
+          face_label=label_encoder.inverse_transform([face_best_idx])[0]
 
-                    # ✅ SVM match
-                    if (face_label==target_label) and (face_score>=svm_score_threshold):
-                        found=True
-                        break
+          # ✅ SVM match
+          if (face_label==target_label) and (face_score>=svm_score_threshold):
+            found=True
+            break
 
-                    # ✅ fallback similarity match
-                    if dist<=similarity_threshold:
-                        found=True
-                        break
-                else:
-                    # ✅ similarity only
-                    if dist<=similarity_threshold:
-                        found=True
-                        break
+          # ✅ fallback similarity match
+          if dist<=similarity_threshold:
+            found=True
+            break
+        else:
+          # ✅ similarity only
+          if dist<=similarity_threshold:
+            found=True
+            break
 
-            if found:
-                shutil.copy(img_path,os.path.join(matched_dir,img_name))
-                matched_count+=1
-            else:
-                shutil.copy(img_path,os.path.join(not_matched_dir,img_name))
-                not_matched_count+=1
+      if found:
+        shutil.copy(img_path,os.path.join(matched_dir,img_name))
+        matched_count+=1
+      else:
+        shutil.copy(img_path,os.path.join(not_matched_dir,img_name))
+        not_matched_count+=1
 
-        except Exception:
-            shutil.copy(img_path,os.path.join(not_matched_dir,img_name))
-            not_matched_count+=1
+    except Exception:
+      shutil.copy(img_path,os.path.join(not_matched_dir,img_name))
+      not_matched_count+=1
 
-    # ✅ zip matched images
-    matched_zip_path=os.path.join(run_dir,"matched.zip")
-    with zipfile.ZipFile(matched_zip_path,"w") as z:
-        for file_name in os.listdir(matched_dir):
-            full_path=os.path.join(matched_dir,file_name)
-            z.write(full_path,arcname=file_name)
+  # ✅ zip matched images
+  matched_zip_path=os.path.join(run_dir,"matched.zip")
+  with zipfile.ZipFile(matched_zip_path,"w") as z:
+    for file_name in os.listdir(matched_dir):
+      full_path=os.path.join(matched_dir,file_name)
+      z.write(full_path,arcname=file_name)
 
-    # ✅ zip NOT matched images
-    not_matched_zip_path=os.path.join(run_dir,"not_matched.zip")
-    with zipfile.ZipFile(not_matched_zip_path,"w") as z:
-        for file_name in os.listdir(not_matched_dir):
-            full_path=os.path.join(not_matched_dir,file_name)
-            z.write(full_path,arcname=file_name)
+  # ✅ zip NOT matched images
+  not_matched_zip_path=os.path.join(run_dir,"not_matched.zip")
+  with zipfile.ZipFile(not_matched_zip_path,"w") as z:
+    for file_name in os.listdir(not_matched_dir):
+      full_path=os.path.join(not_matched_dir,file_name)
+      z.write(full_path,arcname=file_name)
 
-    # ✅ preview urls (send only first 24)
-    matched_files=sorted(os.listdir(matched_dir))[:24]
-    not_matched_files=sorted(os.listdir(not_matched_dir))[:24]
+  # ✅ preview urls (send only first 24)
+  matched_files=sorted(os.listdir(matched_dir))[:24]
+  not_matched_files=sorted(os.listdir(not_matched_dir))[:24]
 
-    matched_preview_urls=[
-        f"http://127.0.0.1:8000/runs/{run_id}/matched/{name}"
-        for name in matched_files
-    ]
+  matched_preview_urls=[
+    f"{BASE_URL}/runs/{run_id}/matched/{name}"
+    for name in matched_files
+  ]
 
-    not_matched_preview_urls=[
-        f"http://127.0.0.1:8000/runs/{run_id}/not_matched/{name}"
-        for name in not_matched_files
-    ]
+  not_matched_preview_urls=[
+    f"{BASE_URL}/runs/{run_id}/not_matched/{name}"
+    for name in not_matched_files
+  ]
 
-    return {
-        "run_id":run_id,
-        "total_scanned":total_scanned,
-        "matched_count":matched_count,
-        "not_matched_count":not_matched_count,
+  return {
+    "run_id":run_id,
+    "total_scanned":total_scanned,
+    "matched_count":matched_count,
+    "not_matched_count":not_matched_count,
 
-        "target_label":target_label,
-        "target_score":target_best_score,
+    "target_label":target_label,
+    "target_score":target_best_score,
 
-        "matched_zip_url":f"http://127.0.0.1:8000/download/{run_id}/matched",
-        "not_matched_zip_url":f"http://127.0.0.1:8000/download/{run_id}/not_matched",
+    "matched_zip_url":f"{BASE_URL}/download/{run_id}/matched",
+    "not_matched_zip_url":f"{BASE_URL}/download/{run_id}/not_matched",
 
-        "matched_preview_urls":matched_preview_urls,
-        "not_matched_preview_urls":not_matched_preview_urls
-    }
+    "matched_preview_urls":matched_preview_urls,
+    "not_matched_preview_urls":not_matched_preview_urls
+  }
 
 
 @app.get("/download/{run_id}/matched")
 def download_matched_zip(run_id:str):
-    run_dir=os.path.join(RUNS_DIR,run_id)
-    zip_path=os.path.join(run_dir,"matched.zip")
-    return FileResponse(zip_path,filename="matched.zip")
+  run_dir=os.path.join(RUNS_DIR,run_id)
+  zip_path=os.path.join(run_dir,"matched.zip")
+  return FileResponse(zip_path,filename="matched.zip")
 
 
 @app.get("/download/{run_id}/not_matched")
 def download_not_matched_zip(run_id:str):
-    run_dir=os.path.join(RUNS_DIR,run_id)
-    zip_path=os.path.join(run_dir,"not_matched.zip")
-    return FileResponse(zip_path,filename="not_matched.zip")
+  run_dir=os.path.join(RUNS_DIR,run_id)
+  zip_path=os.path.join(run_dir,"not_matched.zip")
+  return FileResponse(zip_path,filename="not_matched.zip")

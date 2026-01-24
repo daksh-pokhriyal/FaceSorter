@@ -14,30 +14,30 @@ from fastapi.responses import FileResponse,JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 
-# ✅ BASE URL for deployed backend (Render)
-# Set on Render ENV:
-# BASE_URL=https://facesorter.onrender.com
 BASE_URL=os.getenv("BASE_URL","http://127.0.0.1:8000").rstrip("/")
+
+# ✅ put your exact vercel url here (important)
+FRONTEND_URL=os.getenv(
+  "FRONTEND_URL",
+  "https://face-sorter-2teuzj036-daksh-pokhriyals-projects.vercel.app"
+).rstrip("/")
 
 
 app=FastAPI()
 
 
-# ✅ Allowed Origins (LOCAL + VERCEL)
-# Add your Vercel deployed URL here (recommended)
-ALLOWED_ORIGINS=[
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "https://face-sorter-2teuzj036-daksh-pokhriyals-projects.vercel.app"
-]
-
+# ✅ CORS (Works with Vercel + Local + Render)
 app.add_middleware(
   CORSMiddleware,
-  allow_origins=ALLOWED_ORIGINS,
+  allow_origins=[
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    FRONTEND_URL
+  ],
   allow_origin_regex=r"https://.*\.vercel\.app",
-  allow_credentials=True,
+  allow_credentials=False,  # ✅ IMPORTANT FIX
   allow_methods=["*"],
-  allow_headers=["*"]
+  allow_headers=["*"],
 )
 
 
@@ -45,7 +45,7 @@ BASE_DIR=os.path.dirname(os.path.abspath(__file__))
 RUNS_DIR=os.path.join(BASE_DIR,"runs")
 os.makedirs(RUNS_DIR,exist_ok=True)
 
-# ✅ Serve preview images
+# ✅ serve preview images
 app.mount("/runs",StaticFiles(directory=RUNS_DIR),name="runs")
 
 
@@ -68,14 +68,9 @@ def get_embedding(img_path,detector_backend,embed_model):
 def home():
   return {
     "status":"✅ Face Sorter backend running",
-    "base_url":BASE_URL
+    "base_url":BASE_URL,
+    "frontend_url":FRONTEND_URL
   }
-
-
-# ✅ extra: Render/Vercel sometimes sends preflight OPTIONS
-@app.options("/sort")
-def preflight_sort():
-  return JSONResponse(content={"ok":True})
 
 
 @app.post("/sort")
@@ -117,7 +112,7 @@ async def sort_images(
   if (not os.path.exists(svm_model_path)) or (not os.path.exists(encoder_path)):
     return JSONResponse(
       status_code=500,
-      content={"error":"Model files missing in server/models/ folder"}
+      content={"error":"Model files missing in server/models/"}
     )
 
   svm_model=joblib.load(svm_model_path)
@@ -194,7 +189,6 @@ async def sort_images(
           if dist<=similarity_threshold:
             found=True
             break
-
         else:
           if dist<=similarity_threshold:
             found=True
@@ -244,13 +238,10 @@ async def sort_images(
     "total_scanned":total_scanned,
     "matched_count":matched_count,
     "not_matched_count":not_matched_count,
-
     "target_label":target_label,
     "target_score":target_best_score,
-
     "matched_zip_url":f"{BASE_URL}/download/{run_id}/matched",
     "not_matched_zip_url":f"{BASE_URL}/download/{run_id}/not_matched",
-
     "matched_preview_urls":matched_preview_urls,
     "not_matched_preview_urls":not_matched_preview_urls
   }

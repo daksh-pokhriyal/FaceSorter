@@ -124,60 +124,64 @@ export default function App(){
   },[]);
 
   const handleSort=async ()=>{
-    if(!targetFile || inputFiles.length===0) return;
+  if(!targetFile || inputFiles.length===0) return;
 
-    if(!API){
-      showToast("error","❌ VITE_API_URL is missing in Vercel env");
-      return;
-    }
+  if(!API){
+    showToast("error","❌ VITE_API_URL missing in Vercel env");
+    return;
+  }
 
-    setLoading(true);
-    setResults(null);
-    setActiveTab("matched");
+  setLoading(true);
+  setResults(null);
+  setActiveTab("matched");
 
-    showToast("info","Uploading + sorting started...");
-    startFakeProgress();
+  showToast("info","Uploading + sorting started...");
+  startFakeProgress();
 
-    try{
-      const formData=new FormData();
-      formData.append("target",targetFile);
+  try{
+    const formData=new FormData();
+    formData.append("target",targetFile);
 
-      inputFiles.forEach((file)=>{
-        formData.append("images",file);
-      });
+    inputFiles.forEach((file)=>{
+      formData.append("images",file);
+    });
 
-      formData.append("mode",mode);
-      formData.append("detector",detector);
-      formData.append("similarity_threshold",String(similarityThreshold));
+    formData.append("mode",mode);
+    formData.append("detector",detector);
+    formData.append("similarity_threshold",String(similarityThreshold));
 
-      const res=await axios.post(`${API}/sort`,formData,{
-        headers:{"Content-Type":"multipart/form-data"}
-      });
+    const res=await axios.post(`${API}/sort`,formData,{
+      headers:{"Content-Type":"multipart/form-data"},
+      timeout:300000
+    });
 
-      setProgress(100);
-      setResults(res.data);
+    setProgress(100);
+    setResults(res.data);
 
-      showToast("success",`✅ Done! Matched ${res.data.matched_count} images`);
-    }catch(err){
+    showToast("success",`✅ Done! Matched ${res.data.matched_count} images`);
+  }catch(err){
+    setProgress(0);
+
+    console.log("API ERROR FULL:",err);
+
+    const msg=
+      err?.response?.data?.detail ||
+      err?.response?.data?.error ||
+      err?.response?.data?.message ||
+      err?.message ||
+      "Network error";
+
+    showToast("error","❌ "+msg);
+  }finally{
+    stopFakeProgress();
+    setLoading(false);
+
+    setTimeout(()=>{
       setProgress(0);
+    },1200);
+  }
+};
 
-      const msg=
-        err?.response?.data?.detail ||
-        err?.response?.data?.message ||
-        err?.message ||
-        "Something went wrong";
-
-      showToast("error","❌ "+msg);
-      console.log("API ERROR:",err);
-    }finally{
-      stopFakeProgress();
-      setLoading(false);
-
-      setTimeout(()=>{
-        setProgress(0);
-      },1200);
-    }
-  };
 
   const matchedPreviewList=useMemo(()=>{
     return results?.matched_preview_urls || [];

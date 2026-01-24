@@ -1,0 +1,21 @@
+# Generated runs data (BIG)
+server/runs/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Zips and images (avoid huge accidental commits)
+*.zip
+*.jpg
+*.jpeg
+*.png
+*.webp
+
+# Mac files
+.DS_Store
+
+# Environments
+venv/
+deepface_env/
+.env

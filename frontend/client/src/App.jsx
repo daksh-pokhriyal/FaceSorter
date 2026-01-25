@@ -1,210 +1,210 @@
-import {useEffect,useMemo,useRef,useState} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import "./App.css";
 
-export default function App(){
-  const API=(import.meta.env.VITE_API_URL || "").replace(/\/+$/,"");
+export default function App() {
+  const API = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 
-  const [targetFile,setTargetFile]=useState(null);
-  const [inputFiles,setInputFiles]=useState([]);
-  const [loading,setLoading]=useState(false);
-  const [results,setResults]=useState(null);
+  const [targetFile, setTargetFile] = useState(null);
+  const [inputFiles, setInputFiles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState(null);
 
-  const [progress,setProgress]=useState(0);
-  const progressTimerRef=useRef(null);
+  const [progress, setProgress] = useState(0);
+  const progressTimerRef = useRef(null);
 
-  const [toast,setToast]=useState(null);
-  const toastTimerRef=useRef(null);
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(null);
 
   // ✅ SETTINGS
-  const [mode,setMode]=useState("hybrid"); // hybrid | similarity
-  const [detector,setDetector]=useState("mtcnn"); // mtcnn | retinaface
-  const [similarityThreshold,setSimilarityThreshold]=useState(0.42);
+  const [mode, setMode] = useState("hybrid"); // hybrid | similarity
+  const [detector, setDetector] = useState("mtcnn"); // mtcnn | retinaface
+  const [similarityThreshold, setSimilarityThreshold] = useState(0.42);
 
   // ✅ Preview tabs
-  const [activeTab,setActiveTab]=useState("matched"); // matched | not
+  const [activeTab, setActiveTab] = useState("matched"); // matched | not
 
-  const canSubmit=useMemo(()=>{
-    return Boolean(targetFile) && inputFiles.length>0 && !loading;
-  },[targetFile,inputFiles,loading]);
+  const canSubmit = useMemo(() => {
+    return Boolean(targetFile) && inputFiles.length > 0 && !loading;
+  }, [targetFile, inputFiles, loading]);
 
-  const targetPreview=useMemo(()=>{
+  const targetPreview = useMemo(() => {
     return targetFile ? URL.createObjectURL(targetFile) : null;
-  },[targetFile]);
+  }, [targetFile]);
 
-  const inputPreviews=useMemo(()=>{
-    return inputFiles.map((f)=>({name:f.name,url:URL.createObjectURL(f)}));
-  },[inputFiles]);
+  const inputPreviews = useMemo(() => {
+    return inputFiles.map((f) => ({ name: f.name, url: URL.createObjectURL(f) }));
+  }, [inputFiles]);
 
-  useEffect(()=>{
-    return ()=>{
-      if(targetPreview) URL.revokeObjectURL(targetPreview);
-      inputPreviews.forEach((x)=>URL.revokeObjectURL(x.url));
+  useEffect(() => {
+    return () => {
+      if (targetPreview) URL.revokeObjectURL(targetPreview);
+      inputPreviews.forEach((x) => URL.revokeObjectURL(x.url));
     };
-  },[targetPreview,inputPreviews]);
+  }, [targetPreview, inputPreviews]);
 
-  const showToast=(type,text)=>{
-    setToast({type,text});
-    if(toastTimerRef.current){
+  const showToast = (type, text) => {
+    setToast({ type, text });
+    if (toastTimerRef.current) {
       clearTimeout(toastTimerRef.current);
     }
-    toastTimerRef.current=setTimeout(()=>{
+    toastTimerRef.current = setTimeout(() => {
       setToast(null);
-    },3000);
+    }, 3000);
   };
 
-  useEffect(()=>{
-    return ()=>{
-      if(toastTimerRef.current){
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
         clearTimeout(toastTimerRef.current);
       }
     };
-  },[]);
+  }, []);
 
-  const handleTargetChange=(e)=>{
-    const file=e.target.files?.[0]||null;
+  const handleTargetChange = (e) => {
+    const file = e.target.files?.[0] || null;
     setTargetFile(file);
     setResults(null);
     setProgress(0);
     setActiveTab("matched");
 
-    if(file){
-      showToast("success","✅ Target face selected");
+    if (file) {
+      showToast("success", "✅ Target face selected");
     }
   };
 
-  const handleInputChange=(e)=>{
-    const files=Array.from(e.target.files||[]);
+  const handleInputChange = (e) => {
+    const files = Array.from(e.target.files || []);
     setInputFiles(files);
     setResults(null);
     setProgress(0);
     setActiveTab("matched");
 
-    if(files.length>0){
-      showToast("success",`✅ ${files.length} image(s) added`);
+    if (files.length > 0) {
+      showToast("success", `✅ ${files.length} image(s) added`);
     }
   };
 
-  const handleClear=()=>{
+  const handleClear = () => {
     setTargetFile(null);
     setInputFiles([]);
     setResults(null);
     setProgress(0);
     setActiveTab("matched");
-    showToast("info","Cleared selection");
+    showToast("info", "Cleared selection");
   };
 
-  const startFakeProgress=()=>{
+  const startFakeProgress = () => {
     setProgress(5);
 
-    if(progressTimerRef.current){
+    if (progressTimerRef.current) {
       clearInterval(progressTimerRef.current);
     }
 
-    progressTimerRef.current=setInterval(()=>{
-      setProgress((prev)=>{
-        if(prev>=92) return prev;
-        const jump=Math.random()*4+1;
-        return Math.min(prev+jump,92);
+    progressTimerRef.current = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 92) return prev;
+        const jump = Math.random() * 4 + 1;
+        return Math.min(prev + jump, 92);
       });
-    },350);
+    }, 350);
   };
 
-  const stopFakeProgress=()=>{
-    if(progressTimerRef.current){
+  const stopFakeProgress = () => {
+    if (progressTimerRef.current) {
       clearInterval(progressTimerRef.current);
-      progressTimerRef.current=null;
+      progressTimerRef.current = null;
     }
   };
 
-  useEffect(()=>{
-    return ()=>{
+  useEffect(() => {
+    return () => {
       stopFakeProgress();
     };
-  },[]);
+  }, []);
 
-  const handleSort=async ()=>{
-  if(!targetFile || inputFiles.length===0) return;
+  const handleSort = async () => {
+    if (!targetFile || inputFiles.length === 0) return;
 
-  if(!API){
-    showToast("error","❌ VITE_API_URL missing in Vercel env");
-    return;
-  }
+    if (!API) {
+      showToast("error", "❌ VITE_API_URL missing in Vercel env");
+      return;
+    }
 
-  setLoading(true);
-  setResults(null);
-  setActiveTab("matched");
+    setLoading(true);
+    setResults(null);
+    setActiveTab("matched");
 
-  showToast("info","Uploading + sorting started...");
-  startFakeProgress();
+    showToast("info", "Uploading + sorting started...");
+    startFakeProgress();
 
-  try{
-    const formData=new FormData();
-    formData.append("target",targetFile);
+    try {
+      const formData = new FormData();
+      formData.append("target", targetFile);
 
-    inputFiles.forEach((file)=>{
-      formData.append("images",file);
-    });
+      inputFiles.forEach((file) => {
+        formData.append("images", file);
+      });
 
-    formData.append("mode",mode);
-    formData.append("detector",detector);
-    formData.append("similarity_threshold",String(similarityThreshold));
+      formData.append("mode", mode);
+      formData.append("detector", detector);
+      formData.append("similarity_threshold", String(similarityThreshold));
 
-    const res=await axios.post(`${API}/sort`,formData,{
-      headers:{"Content-Type":"multipart/form-data"},
-      timeout:300000
-    });
+      const res = await axios.post(`${API}/sort`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 300000
+      });
 
-    setProgress(100);
-    setResults(res.data);
+      setProgress(100);
+      setResults(res.data);
 
-    showToast("success",`✅ Done! Matched ${res.data.matched_count} images`);
-  }catch(err){
-    setProgress(0);
-
-    console.log("API ERROR FULL:",err);
-
-    const msg=
-      err?.response?.data?.detail ||
-      err?.response?.data?.error ||
-      err?.response?.data?.message ||
-      err?.message ||
-      "Network error";
-
-    showToast("error","❌ "+msg);
-  }finally{
-    stopFakeProgress();
-    setLoading(false);
-
-    setTimeout(()=>{
+      showToast("success", `✅ Done! Matched ${res.data.matched_count} images`);
+    } catch (err) {
       setProgress(0);
-    },1200);
-  }
-};
+
+      console.log("API ERROR FULL:", err);
+
+      const msg =
+        err?.response?.data?.detail ||
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Network error";
+
+      showToast("error", "❌ " + msg);
+    } finally {
+      stopFakeProgress();
+      setLoading(false);
+
+      setTimeout(() => {
+        setProgress(0);
+      }, 1200);
+    }
+  };
 
 
-  const matchedPreviewList=useMemo(()=>{
+  const matchedPreviewList = useMemo(() => {
     return results?.matched_preview_urls || [];
-  },[results]);
+  }, [results]);
 
-  const notMatchedPreviewList=useMemo(()=>{
+  const notMatchedPreviewList = useMemo(() => {
     return results?.not_matched_preview_urls || [];
-  },[results]);
+  }, [results]);
 
-  const activePreviewList=useMemo(()=>{
-    return activeTab==="matched" ? matchedPreviewList : notMatchedPreviewList;
-  },[activeTab,matchedPreviewList,notMatchedPreviewList]);
+  const activePreviewList = useMemo(() => {
+    return activeTab === "matched" ? matchedPreviewList : notMatchedPreviewList;
+  }, [activeTab, matchedPreviewList, notMatchedPreviewList]);
 
-  const activePreviewTitle=useMemo(()=>{
-    return activeTab==="matched" ? "Matched Preview" : "Not Matched Preview";
-  },[activeTab]);
+  const activePreviewTitle = useMemo(() => {
+    return activeTab === "matched" ? "Matched Preview" : "Not Matched Preview";
+  }, [activeTab]);
 
   return (
     <div className="page">
       {toast && (
         <div className={`toast toast-${toast.type}`}>
           <span>{toast.text}</span>
-          <button className="toastClose" onClick={()=>setToast(null)}>✕</button>
+          <button className="toastClose" onClick={() => setToast(null)}>✕</button>
         </div>
       )}
 
@@ -225,7 +225,7 @@ export default function App(){
           <div className="settingsGrid">
             <div className="settingItem">
               <label>Mode</label>
-              <select value={mode} onChange={(e)=>setMode(e.target.value)} disabled={loading}>
+              <select value={mode} onChange={(e) => setMode(e.target.value)} disabled={loading}>
                 <option value="hybrid">Hybrid (SVM + Cosine Similarity)</option>
                 <option value="similarity">Cosine Similarity Only</option>
               </select>
@@ -233,7 +233,7 @@ export default function App(){
 
             <div className="settingItem">
               <label>Detector</label>
-              <select value={detector} onChange={(e)=>setDetector(e.target.value)} disabled={loading}>
+              <select value={detector} onChange={(e) => setDetector(e.target.value)} disabled={loading}>
                 <option value="mtcnn">MTCNN (Recommended)</option>
                 <option value="retinaface">RetinaFace</option>
               </select>
@@ -250,7 +250,7 @@ export default function App(){
                 max="0.55"
                 step="0.01"
                 value={similarityThreshold}
-                onChange={(e)=>setSimilarityThreshold(Number(e.target.value))}
+                onChange={(e) => setSimilarityThreshold(Number(e.target.value))}
                 disabled={loading}
               />
 
@@ -266,13 +266,13 @@ export default function App(){
             <p className="boxTitle">1) Target Face</p>
 
             <div className="fileRow">
-              <input type="file" accept="image/*" onChange={handleTargetChange}/>
+              <input type="file" accept="image/*" onChange={handleTargetChange} />
               {targetFile && <p className="hint">Selected: {targetFile.name}</p>}
             </div>
 
             {targetPreview && (
               <div className="previewCard">
-                <img className="previewImg" src={targetPreview} alt="target preview"/>
+                <img className="previewImg" src={targetPreview} alt="target preview" />
               </div>
             )}
           </div>
@@ -281,22 +281,22 @@ export default function App(){
             <p className="boxTitle">2) Images to Scan</p>
 
             <div className="fileRow">
-              <input type="file" accept="image/*" multiple onChange={handleInputChange}/>
+              <input type="file" accept="image/*" multiple onChange={handleInputChange} />
               <p className="hint">{inputFiles.length} image(s) selected</p>
             </div>
 
-            {inputPreviews.length>0 && (
+            {inputPreviews.length > 0 && (
               <div>
                 <div className="thumbGrid">
-                  {inputPreviews.slice(0,12).map((x)=>(
+                  {inputPreviews.slice(0, 12).map((x) => (
                     <div className="thumb" key={x.name}>
-                      <img src={x.url} alt={x.name}/>
+                      <img src={x.url} alt={x.name} />
                     </div>
                   ))}
                 </div>
 
-                {inputPreviews.length>12 && (
-                  <p className="moreText">+{inputPreviews.length-12} more</p>
+                {inputPreviews.length > 12 && (
+                  <p className="moreText">+{inputPreviews.length - 12} more</p>
                 )}
               </div>
             )}
@@ -321,7 +321,7 @@ export default function App(){
             </div>
 
             <div className="progressBar">
-              <div className="progressFill" style={{width:`${progress}%`}}/>
+              <div className="progressFill" style={{ width: `${progress}%` }} />
             </div>
           </div>
         )}
@@ -357,13 +357,23 @@ export default function App(){
 
             <div className="zipActions">
               {results.matched_zip_url && (
-                <a className="linkBtn" href={results.matched_zip_url} target="_blank" rel="noreferrer">
+                <a
+                  className="linkBtn"
+                  href={`${API}/download/${results.run_id}/matched`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   Download Matched ZIP
                 </a>
               )}
 
               {results.not_matched_zip_url && (
-                <a className="linkBtn linkBtnAlt" href={results.not_matched_zip_url} target="_blank" rel="noreferrer">
+                <a
+                  className="linkBtn linkBtnAlt"
+                  href={`${API}/download/${results.run_id}/not_matched`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   Download Not Matched ZIP
                 </a>
               )}
@@ -379,37 +389,37 @@ export default function App(){
 
                 <div className="galleryTabs">
                   <button
-                    className={`tabBtn ${activeTab==="matched" ? "active" : ""}`}
-                    onClick={()=>setActiveTab("matched")}
+                    className={`tabBtn ${activeTab === "matched" ? "active" : ""}`}
+                    onClick={() => setActiveTab("matched")}
                   >
                     Matched
                   </button>
 
                   <button
-                    className={`tabBtn ${activeTab==="not" ? "active" : ""}`}
-                    onClick={()=>setActiveTab("not")}
+                    className={`tabBtn ${activeTab === "not" ? "active" : ""}`}
+                    onClick={() => setActiveTab("not")}
                   >
                     Not Matched
                   </button>
                 </div>
               </div>
 
-              {activePreviewList.length===0 ? (
+              {activePreviewList.length === 0 ? (
                 <p className="galleryEmpty">No preview images available.</p>
               ) : (
                 <div className="previewGrid">
-                  {activePreviewList.map((url)=>(
+                  {activePreviewList.map((url) => (
                     <button
                       className="previewThumbBtn"
                       key={url}
-                      onClick={()=>window.open(url,"_blank")}
+                      onClick={() => window.open(url, "_blank")}
                       title="Open image"
                     >
                       <img
                         src={url}
                         alt="preview"
-                        onError={(e)=>{
-                          e.currentTarget.src="/fallback.png";
+                        onError={(e) => {
+                          e.currentTarget.src = "/fallback.png";
                         }}
                       />
                     </button>

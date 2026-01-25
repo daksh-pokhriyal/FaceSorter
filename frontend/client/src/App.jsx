@@ -412,11 +412,13 @@ export default function App() {
                     <button
                       className="previewThumbBtn"
                       key={url}
-                      onClick={() => window.open(url, "_blank")}
+                     onClick={()=>window.open(encodeURI(url),"_blank")}
+
                       title="Open image"
                     >
                       <img
-                        src={url}
+                        src={encodeURI(url)}
+
                         alt="preview"
                         onError={(e) => {
                           e.currentTarget.src = "/fallback.png";

@@ -14,19 +14,19 @@ from fastapi.responses import FileResponse,JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 
-BASE_URL=os.getenv("BASE_URL","http://127.0.0.1:8000").rstrip("/")
+BASE_URL=os.getenv("https://facesorter.onrender.com","http://127.0.0.1:8000").rstrip("/")
 
-# ✅ put your exact vercel url here (important)
+# ✅ Render Frontend URL
 FRONTEND_URL=os.getenv(
-  "FRONTEND_URL",
-  "https://face-sorter.vercel.app/"
+  "https://facesorter-frontend.onrender.com",
+  "http://localhost:5173"
 ).rstrip("/")
 
 
 app=FastAPI()
 
 
-# ✅ CORS (Works with Vercel + Local + Render)
+# ✅ CORS (Render Frontend + Local)
 app.add_middleware(
   CORSMiddleware,
   allow_origins=[
@@ -34,8 +34,7 @@ app.add_middleware(
     "http://127.0.0.1:5173",
     FRONTEND_URL
   ],
-  allow_origin_regex=r"https://.*\.vercel\.app",
-  allow_credentials=False,  # ✅ IMPORTANT FIX
+  allow_credentials=False,
   allow_methods=["*"],
   allow_headers=["*"],
 )

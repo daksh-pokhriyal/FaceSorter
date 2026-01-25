@@ -25,6 +25,14 @@ FRONTEND_URL=os.getenv(
 
 app=FastAPI()
 
+@app.on_event("startup")
+def preload_models():
+  try:
+    DeepFace.build_model("Facenet")
+    print("✅ Facenet model preloaded")
+  except Exception as e:
+    print("❌ Model preload failed:",e)
+
 
 # ✅ CORS (Render Frontend + Local)
 app.add_middleware(
@@ -118,7 +126,7 @@ async def sort_images(
   label_encoder=joblib.load(encoder_path)
 
   detector_backend=detector
-  embed_model="Facenet512"
+  embed_model="Facenet"
 
   svm_score_threshold=0.0
   similarity_threshold=float(similarity_threshold)

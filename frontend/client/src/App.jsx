@@ -221,7 +221,7 @@ export default function App() {
           <div className="settingsHeader">
             <h3>Settings</h3>
             <p>Adjust settings according to you for best results</p>
-            <p > <b> If website is too slow, use <u>RetinaFace</u> for faster results ! </b>  </p>
+            <p > This website is fast for pre-trained images of celebrities, and may be slow for other images <b>So, If website is too slow, use <u>RetinaFace</u> for faster results ! </b>  </p>
           </div>
 
           <div className="settingsGrid">

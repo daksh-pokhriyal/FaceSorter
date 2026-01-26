@@ -220,6 +220,7 @@ export default function App() {
           <div className="settingsHeader">
             <h3>Settings</h3>
             <p>Adjust settings according to you for best results</p>
+            <p > <b> If website is too slow, use <u>RetinaFace</u> for faster results ! </b>  </p>
           </div>
 
           <div className="settingsGrid">

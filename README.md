@@ -1,9 +1,9 @@
 # Face Recognition Photo Sorting System 🧑‍💻📸
 
-A **full-stack face recognition project** that automatically sorts photos by matching a **target face** inside a folder of images.
+A **face recognition project** that automatically sorts photos by matching a **target face** inside a folder of images.
 
-✅ Upload **1 Target Face Image**  
-✅ Upload **Multiple Photos** *(single face or group photos)*  
+Upload **1 Target Face Image**  
+Upload **Multiple Photos** *(single face or group photos)*  
 ➡️ The system detects faces, matches the target face, and gives you downloadable ZIP files:
 
 📦 `matched.zip` → photos where the target face is found  
@@ -31,9 +31,7 @@ A **full-stack face recognition project** that automatically sorts photos by mat
 ✅ Adjustable **Similarity Threshold Slider**  
 ✅ Downloads results as ZIP files:
 - `matched.zip`
-- `not_matched.zip`
-
-✅ Clean modern UI with progress bar + results stats  
+- `not_matched.zip` 
 
 ---
 
@@ -145,4 +143,4 @@ FaceSorter_clean/
 │   └── ...
 │
 ├── .gitignore
-└── README.md
+

@@ -4,6 +4,7 @@ import "./App.css";
 
 export default function App() {
  const API=(import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/,"");
+ console.log("API:",API);
 
 
   const [targetFile, setTargetFile] = useState(null);
@@ -410,21 +411,25 @@ export default function App() {
                 <p className="galleryEmpty">No preview images available.</p>
               ) : (
                 <div className="previewGrid">
-                  {activePreviewList.map((url) => (
-                    <button
-                      className="previewThumbBtn"
-                      key={url}
-                     onClick={()=>window.open(encodeURI(url),"_blank")}
+                    {activePreviewList.map((url) => (
+                      <button
+                        className="previewThumbBtn"
+                        key={url}
+                        onClick={()=>{
+  const cleanUrl=(url || "").trim();
+  window.open(cleanUrl,"_blank","noopener,noreferrer");
+}}
 
-                      title="Open image"
-                    >
-                      <img
-                        src={encodeURI(url)}
+                     
+                        title="Open image"
+                      >
+                        <img
+                          src={(url || "").trim()}
 
-                        alt="preview"
-                        onError={(e) => {
-                          e.currentTarget.src = "/fallback.png";
-                        }}
+                          alt="preview"
+                          onError={(e) => {
+                            e.currentTarget.src = "/fallback.png";
+                          }}
                       />
                     </button>
                   ))}

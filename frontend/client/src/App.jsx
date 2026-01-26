@@ -3,7 +3,8 @@ import axios from "axios";
 import "./App.css";
 
 export default function App() {
-  const API = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
+ const API=(import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/,"");
+
 
   const [targetFile, setTargetFile] = useState(null);
   const [inputFiles, setInputFiles] = useState([]);

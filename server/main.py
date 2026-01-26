@@ -1,4 +1,4 @@
-import os # daksh
+import os
 import shutil
 import zipfile
 from uuid import uuid4
@@ -15,10 +15,13 @@ from fastapi.staticfiles import StaticFiles
 
 
 # ✅ HuggingFace / Local backend url
+# For HuggingFace set it like:
 # BASE_URL=https://<your-space-name>.hf.space
 BASE_URL=os.getenv("BASE_URL","https://dakshpokhriyal-facesort-backend.hf.space").rstrip("/")
 
+
 # ✅ Frontend URL (Vercel / Render)
+# Set this in HuggingFace Space variables:
 # FRONTEND_URL=https://face-sorter.vercel.app
 FRONTEND_URL=os.getenv("FRONTEND_URL","http://localhost:5173").rstrip("/")
 
@@ -26,7 +29,7 @@ FRONTEND_URL=os.getenv("FRONTEND_URL","http://localhost:5173").rstrip("/")
 app=FastAPI()
 
 
-# ✅ CORS FIX
+# ✅ CORS FIX (browser needs this)
 app.add_middleware(
   CORSMiddleware,
   allow_origins=[
@@ -82,18 +85,7 @@ def home():
   }
 
 
-# ✅ Preview route (for showing images on frontend)
-@app.get("/preview/{run_id}/{folder}/{filename}")
-def preview_image(run_id:str,folder:str,filename:str):
-  file_path=os.path.join(RUNS_DIR,run_id,folder,filename)
-
-  if not os.path.exists(file_path):
-    return JSONResponse(status_code=404,content={"error":"Preview image not found"})
-
-  return FileResponse(file_path)
-
-
-# ✅ OPTIONS preflight fix
+# ✅ OPTIONS preflight fix (important for browser calls)
 @app.options("/sort")
 def preflight_sort():
   return JSONResponse(content={"ok":True})
@@ -175,18 +167,7 @@ async def sort_images(
       continue
 
     total_scanned+=1
-      
-    safe_name=img_name.replace("#","_").replace(" ","_")
-    safe_path=os.path.join(input_dir,safe_name)
-
-    if safe_name!=img_name:
-        os.rename(os.path.join(input_dir,img_name),safe_path)
-      
-
-    img_path=safe_path
-    img_name=safe_name
-
-    
+    img_path=os.path.join(input_dir,img_name)
 
     try:
       faces=DeepFace.extract_faces(
@@ -260,15 +241,8 @@ async def sort_images(
   matched_files=sorted(os.listdir(matched_dir))[:24]
   not_matched_files=sorted(os.listdir(not_matched_dir))[:24]
 
-  matched_preview_urls=[
-    f"{BASE_URL}/preview/{run_id}/matched/{name}"
-    for name in matched_files
-  ]
-
-  not_matched_preview_urls=[
-    f"{BASE_URL}/preview/{run_id}/not_matched/{name}"
-    for name in not_matched_files
-  ]
+  matched_preview_urls=[f"{BASE_URL}/runs/{run_id}/matched/{name}" for name in matched_files]
+  not_matched_preview_urls=[f"{BASE_URL}/runs/{run_id}/not_matched/{name}" for name in not_matched_files]
 
   return {
     "run_id":run_id,

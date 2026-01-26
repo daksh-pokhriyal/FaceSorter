@@ -1,4 +1,4 @@
-import os
+import os # daksh
 import shutil
 import zipfile
 from uuid import uuid4
@@ -8,33 +8,25 @@ import joblib
 from deepface import DeepFace
 from sklearn.metrics.pairwise import cosine_similarity
 
-from fastapi import FastAPI,UploadFile,File
+from fastapi import FastAPI,UploadFile,File,Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse,JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 
-BASE_URL=os.getenv("https://facesorter.onrender.com","http://127.0.0.1:8000").rstrip("/")
+# ✅ HuggingFace / Local backend url
+# BASE_URL=https://<your-space-name>.hf.space
+BASE_URL=os.getenv("BASE_URL","https://dakshpokhriyal-facesort-backend.hf.space").rstrip("/")
 
-# ✅ Render Frontend URL
-FRONTEND_URL=os.getenv(
-  "https://facesorter-frontend.onrender.com",
-  "http://localhost:5173"
-).rstrip("/")
+# ✅ Frontend URL (Vercel / Render)
+# FRONTEND_URL=https://face-sorter.vercel.app
+FRONTEND_URL=os.getenv("FRONTEND_URL","http://localhost:5173").rstrip("/")
 
 
 app=FastAPI()
 
-@app.on_event("startup")
-def preload_models():
-  try:
-    DeepFace.build_model("Facenet")
-    print("✅ Facenet model preloaded")
-  except Exception as e:
-    print("❌ Model preload failed:",e)
 
-
-# ✅ CORS (Render Frontend + Local)
+# ✅ CORS FIX
 app.add_middleware(
   CORSMiddleware,
   allow_origins=[
@@ -42,9 +34,10 @@ app.add_middleware(
     "http://127.0.0.1:5173",
     FRONTEND_URL
   ],
+  allow_origin_regex=r"https://.*\.vercel\.app",
   allow_credentials=False,
   allow_methods=["*"],
-  allow_headers=["*"],
+  allow_headers=["*"]
 )
 
 
@@ -71,6 +64,15 @@ def get_embedding(img_path,detector_backend,embed_model):
   return np.array(rep[0]["embedding"],dtype=np.float32)
 
 
+@app.on_event("startup")
+def preload_models():
+  try:
+    DeepFace.build_model("Facenet512")
+    print("✅ Facenet512 model preloaded")
+  except Exception as e:
+    print("❌ Model preload failed:",e)
+
+
 @app.get("/")
 def home():
   return {
@@ -80,8 +82,26 @@ def home():
   }
 
 
+# ✅ Preview route (for showing images on frontend)
+@app.get("/preview/{run_id}/{folder}/{filename}")
+def preview_image(run_id:str,folder:str,filename:str):
+  file_path=os.path.join(RUNS_DIR,run_id,folder,filename)
+
+  if not os.path.exists(file_path):
+    return JSONResponse(status_code=404,content={"error":"Preview image not found"})
+
+  return FileResponse(file_path)
+
+
+# ✅ OPTIONS preflight fix
+@app.options("/sort")
+def preflight_sort():
+  return JSONResponse(content={"ok":True})
+
+
 @app.post("/sort")
 async def sort_images(
+  request:Request,
   target:UploadFile=File(...),
   images:list[UploadFile]=File(...),
   mode:str=File("hybrid"),
@@ -126,7 +146,7 @@ async def sort_images(
   label_encoder=joblib.load(encoder_path)
 
   detector_backend=detector
-  embed_model="Facenet"
+  embed_model="Facenet512"
 
   svm_score_threshold=0.0
   similarity_threshold=float(similarity_threshold)
@@ -141,7 +161,6 @@ async def sort_images(
   target_label=label_encoder.inverse_transform([target_best_idx])[0]
 
   use_svm=(target_best_score>=svm_score_threshold)
-
   if mode=="similarity":
     use_svm=False
 
@@ -156,7 +175,18 @@ async def sort_images(
       continue
 
     total_scanned+=1
-    img_path=os.path.join(input_dir,img_name)
+      
+    safe_name=img_name.replace("#","_").replace(" ","_")
+    safe_path=os.path.join(input_dir,safe_name)
+
+    if safe_name!=img_name:
+        os.rename(os.path.join(input_dir,img_name),safe_path)
+      
+
+    img_path=safe_path
+    img_name=safe_name
+
+    
 
     try:
       faces=DeepFace.extract_faces(
@@ -231,12 +261,12 @@ async def sort_images(
   not_matched_files=sorted(os.listdir(not_matched_dir))[:24]
 
   matched_preview_urls=[
-    f"{BASE_URL}/runs/{run_id}/matched/{name}"
+    f"{BASE_URL}/preview/{run_id}/matched/{name}"
     for name in matched_files
   ]
 
   not_matched_preview_urls=[
-    f"{BASE_URL}/runs/{run_id}/not_matched/{name}"
+    f"{BASE_URL}/preview/{run_id}/not_matched/{name}"
     for name in not_matched_files
   ]
 

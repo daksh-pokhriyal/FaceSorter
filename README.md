@@ -1,4 +1,4 @@
-# Face Recognition Photo Sorting System 🧑‍💻📸
+# Face Recognition Photo Sorting System
 
 A **face recognition project** that automatically sorts photos by matching a **target face** inside a folder of images.
 
@@ -12,7 +12,7 @@ Upload **Multiple Photos** *(single face or group photos)*
 ---
 
 ## 🚀 Demo Video
-▶️ **YouTube Demo:** https://www.youtube.com/watch?v=_xG9CviE5Fs
+▶️ **YouTube Demo:** [https://www.youtube.com/watch?v=_xG9CviE5Fs](https://youtu.be/NIYn7HLk6Gc)
 
 ---
 
@@ -35,7 +35,7 @@ Upload **Multiple Photos** *(single face or group photos)*
 
 ---
 
-## 🧠 Hybrid Matching Logic (SVM + Similarity)
+## Hybrid Matching Logic (SVM + Similarity)
 
 This project is a **hybrid system** that uses both:
 
@@ -69,7 +69,7 @@ If:
 
 ---
 
-## 🧠 How It Works (Pipeline)
+## How It Works (Pipeline)
 
 1. **Target Face Upload**
 2. **Face Detection** *(MTCNN / RetinaFace)*
@@ -93,7 +93,7 @@ If the target face is not in the training dataset, it may still predict the clos
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 ### Frontend
 - React (Vite)

@@ -1,4 +1,4 @@
-<img width="1390" height="1176" alt="Blank board" src="https://github.com/user-attachments/assets/81f471a1-570c-43db-9d57-7fe8670cc2e6" /># Face Recognition Photo Sorting System
+# Face Recognition Photo Sorting System
 
 A **face recognition project** that automatically sorts photos by matching a **target face** inside a folder of images.
 
@@ -94,6 +94,8 @@ If the target face is not in the training dataset, it may still predict the clos
 ---
 
 ## Flowchart 
+
+<img width="1390" height="1176" alt="Blank board" src="https://github.com/user-attachments/assets/81f471a1-570c-43db-9d57-7fe8670cc2e6" />
 
 
 

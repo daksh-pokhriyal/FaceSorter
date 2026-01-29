@@ -14,6 +14,9 @@ Upload **Multiple Photos** *(single face or group photos)*
 ## Demo Video
 **YouTube Demo:** [https://www.youtube.com/watch?v=_xG9CviE5Fs](https://youtu.be/NIYn7HLk6Gc)
 
+Website Link :- https://face-sorter.vercel.app
+Backend Link :- https://dakshpokhriyal-facesort-backend.hf.space
+
 ---
 
 ## Features

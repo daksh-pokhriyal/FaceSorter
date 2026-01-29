@@ -16,6 +16,7 @@ Upload **Multiple Photos** *(single face or group photos)*
 
 Website Link :- https://face-sorter.vercel.app
 Backend Link :- https://dakshpokhriyal-facesort-backend.hf.space
+Swagger UI link :- https://dakshpokhriyal-facesort-backend.hf.space/docs
 
 ---
 
